@@ -4,22 +4,20 @@ import {
   Avatar,
   Badge,
   Box,
-  Button,
   Flex,
-  HStack,
-  Icon,
-  SimpleGrid,
-  Table,
-  Tbody,
-  Td,
+  Heading,
   Text,
-  Th,
-  Thead,
-  Tr,
-  VStack,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  useColorModeValue,
+  SimpleGrid,
+  Button,
+  Badge,
 } from '@chakra-ui/react';
-import { FiArrowDown, FiArrowUp, FiExternalLink, FiSliders } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { FiMessageCircle, FiClock, FiThumbsUp, FiAlertCircle } from 'react-icons/fi';
 import { useAppData } from '../context/AppDataContext';
 
 const statusColor = {

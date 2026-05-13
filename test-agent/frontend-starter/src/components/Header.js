@@ -1,6 +1,31 @@
 // src/components/Header.js
 import React from 'react';
-import { Avatar, Box, Flex, Text, useColorModeValue } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  IconButton,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  useColorMode,
+  Button,
+  Badge,
+  Tooltip,
+} from '@chakra-ui/react';
+import { 
+  FiSearch, 
+  FiMenu, 
+  FiBell, 
+  FiMoon, 
+  FiSun,
+  FiUser,
+  FiSettings,
+  FiHelpCircle,
+} from 'react-icons/fi';
 
 const Header = () => {
   const purple = useColorModeValue('#4b3b83', 'brand.700');

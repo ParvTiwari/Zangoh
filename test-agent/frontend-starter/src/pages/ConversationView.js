@@ -1,5 +1,5 @@
 // src/pages/ConversationView.js
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Avatar,
   Badge,
@@ -12,14 +12,7 @@ import {
   HStack,
   Heading,
   Input,
-  IconButton,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
+  Select,
   SimpleGrid,
   Stack,
   Stat,
@@ -29,7 +22,6 @@ import {
   Text,
   Textarea,
   VStack,
-  useDisclosure,
   useToast,
 } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -41,7 +33,6 @@ import {
 } from '../api';
 import { useAppData } from '../context/AppDataContext';
 import { formatDate } from '../utils/dateUtils';
-import { FiMic, FiMicOff, FiSend, FiZap } from 'react-icons/fi';
 
 const extractVariables = (content) => {
   const matches = content.match(/{{\s*([a-zA-Z0-9_]+)\s*}}/g) || [];
@@ -55,7 +46,6 @@ const ConversationView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { isOpen: isTemplateOpen, onOpen: openTemplateModal, onClose: closeTemplateModal } = useDisclosure();
   const { conversations, templates, updateConversation, appendConversationMessage } = useAppData();
   const [conversation, setConversation] = useState(null);
   const [message, setMessage] = useState('');
@@ -63,8 +53,6 @@ const ConversationView = () => {
   const [releaseNotes, setReleaseNotes] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [variableValues, setVariableValues] = useState({});
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
 
   useEffect(() => {
     const cachedConversation = conversations.find((conv) => conv.id === id || conv._id === id);
@@ -81,10 +69,6 @@ const ConversationView = () => {
       });
   }, [id]);
 
-  useEffect(() => {
-    return () => recognitionRef.current?.stop();
-  }, []);
-
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId),
     [templates, selectedTemplateId]
@@ -97,49 +81,6 @@ const ConversationView = () => {
 
   const conversationId = conversation?.id || conversation?._id;
   const hasHumanControl = conversation?.status === 'escalated' || conversation?.humanIntervention?.occurred;
-
-  const supportsVoiceInput = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-
-  const toggleVoiceInput = () => {
-    if (!supportsVoiceInput) {
-      toast({ title: 'Voice input is not supported in this browser', status: 'warning', duration: 3000 });
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = true;
-    recognition.continuous = false;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => {
-      setIsListening(false);
-      toast({ title: 'Voice capture stopped', status: 'warning', duration: 2500 });
-    };
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .slice(event.resultIndex)
-        .filter((result) => result.isFinal)
-        .map((result) => result[0]?.transcript || '')
-        .join(' ')
-        .trim();
-
-      if (transcript) {
-        setMessage((current) => `${current}${current ? ' ' : ''}${transcript}`.trim());
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-  };
 
   const handleTakeOver = async () => {
     try {
@@ -203,7 +144,6 @@ const ConversationView = () => {
     }, {});
     setVariableValues(defaults);
     setMessage(applyVariables(template.content, defaults));
-    closeTemplateModal();
   };
 
   const handleVariableChange = (variable, value) => {
@@ -256,31 +196,31 @@ const ConversationView = () => {
           </VStack>
 
           <Stack p={5} spacing={4} borderTop="1px solid" borderColor="gray.100">
+            <FormControl>
+              <FormLabel>Use response template</FormLabel>
+              <Select placeholder="Select a template" value={selectedTemplateId} onChange={(event) => handleTemplateSelection(event.target.value)}>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>{template.name} · {template.category}</option>
+                ))}
+              </Select>
+            </FormControl>
             {selectedTemplateVariables.length > 0 && (
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3} p={3} bg="#fff1b8" borderRadius="16px">
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3} p={3} bg="orange.50" borderRadius="lg">
                 {selectedTemplateVariables.map((variable) => (
                   <FormControl key={variable}>
-                    <FormLabel fontSize="xs" fontWeight="800">{'{{'}{variable}{'}}'}</FormLabel>
-                    <Input value={variableValues[variable] || ''} onChange={(event) => handleVariableChange(variable, event.target.value)} placeholder={`Value for {{${variable}}}`} bg="white" borderRadius="12px" />
+                    <FormLabel>{'{{'}{variable}{'}}'}</FormLabel>
+                    <Input value={variableValues[variable] || ''} onChange={(event) => handleVariableChange(variable, event.target.value)} placeholder={`Value for {{${variable}}}`} bg="white" />
                   </FormControl>
                 ))}
               </SimpleGrid>
             )}
-            {selectedTemplate && (
-              <Box bg="#f7f5fb" border="1px solid" borderColor="#dedbe8" borderRadius="16px" p={4}>
-                <Text fontSize="xs" fontWeight="800" color="#6d609b" mb={2}>Completed message preview</Text>
-                <Text fontSize="sm" color="#332b43" whiteSpace="pre-wrap">{message || selectedTemplate.content}</Text>
-              </Box>
-            )}
-            <Box position="relative">
-              <Textarea minH="104px" borderRadius="24px" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Respond by typing or voice..." pr="172px" />
-              <Button position="absolute" right="96px" top="12px" size="xs" borderRadius="full" leftIcon={<FiZap />} onClick={openTemplateModal}>
-                Template
+            <Textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Send a message as the supervisor..." />
+            <HStack justify="space-between">
+              <Text color="gray.500" fontSize="sm">Messages are sent with sender=supervisor.</Text>
+              <Button colorScheme="purple" onClick={handleSendMessage} isDisabled={!hasHumanControl || !message.trim()}>
+                Send as supervisor
               </Button>
-              <IconButton position="absolute" right="54px" top="10px" aria-label={isListening ? 'Stop voice input' : 'Start voice input'} icon={isListening ? <FiMicOff /> : <FiMic />} variant={isListening ? 'solid' : 'ghost'} colorScheme={isListening ? 'red' : 'purple'} onClick={toggleVoiceInput} />
-              <IconButton position="absolute" right="14px" top="10px" aria-label="Send supervisor message" icon={<FiSend />} variant="ghost" colorScheme="purple" onClick={handleSendMessage} isDisabled={!hasHumanControl || !message.trim()} />
-            </Box>
-            <Text color="gray.500" fontSize="sm">Take over first, then send responses as the supervisor. Use the microphone to dictate a reply; recognized speech is added to the message box.</Text>
+            </HStack>
           </Stack>
         </Box>
 
@@ -326,49 +266,6 @@ const ConversationView = () => {
           </Box>
         </Stack>
       </Flex>
-
-      <Modal isOpen={isTemplateOpen} onClose={closeTemplateModal} size="5xl" isCentered>
-        <ModalOverlay bg="blackAlpha.500" backdropFilter="blur(2px)" />
-        <ModalContent borderRadius="22px" p={2}>
-          <ModalHeader>Response Templates</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Flex gap={6} direction={{ base: 'column', lg: 'row' }}>
-              <VStack align="stretch" minW="170px" color="#5f596d" fontSize="sm">
-                <Input size="sm" borderRadius="full" placeholder="Search" />
-                {['All', 'Popular', 'Onboarding', 'Return', 'Engagement', 'Transaction', 'Website', 'Mobile', 'Messenger'].map((item) => (
-                  <Button key={item} justifyContent="flex-start" size="sm" variant="ghost" bg={item === 'Onboarding' ? '#d9d5e6' : 'transparent'}>{item}</Button>
-                ))}
-              </VStack>
-              <Box flex="1">
-                <HStack mb={4}>
-                  <Button size="sm" borderRadius="full" bg="#4b3b83" color="white">My Templates</Button>
-                  <Button size="sm" borderRadius="full">Shared Templates</Button>
-                </HStack>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                  {templates.map((template) => (
-                    <Box key={template.id} p={3} border="1px solid" borderColor={selectedTemplateId === template.id ? '#4b3b83' : '#dedbe8'} borderRadius="16px" cursor="pointer" onClick={() => handleTemplateSelection(template.id)} _hover={{ borderColor: '#4b3b83' }}>
-                      <Box bg="#f0eef6" borderRadius="10px" p={3} mb={3} fontSize="xs" noOfLines={2}>{template.content}</Box>
-                      <Text fontWeight="800" fontSize="sm" noOfLines={1}>{template.name}</Text>
-                      <HStack mt={2}><Tag size="sm">#Chat</Tag><Tag size="sm">{template.category}</Tag></HStack>
-                    </Box>
-                  ))}
-                </SimpleGrid>
-              </Box>
-              <Box minW={{ base: 'auto', lg: '260px' }} borderLeft={{ base: 'none', lg: '1px solid' }} borderColor="#edeaf4" pl={{ base: 0, lg: 6 }}>
-                <Heading size="sm" mb={4}>Preview</Heading>
-                <Box border="1px solid" borderColor="#edeaf4" borderRadius="14px" p={4} fontSize="sm">
-                  {selectedTemplate ? applyVariables(selectedTemplate.content, variableValues) : 'Select a template to preview it here.'}
-                </Box>
-              </Box>
-            </Flex>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" onClick={closeTemplateModal}>Cancel</Button>
-            <Button ml={3} bg="#4b3b83" color="white" onClick={closeTemplateModal}>Insert</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </Box>
   );
 };

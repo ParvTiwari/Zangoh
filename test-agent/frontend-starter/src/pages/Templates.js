@@ -6,10 +6,11 @@ import {
   Button,
   Card,
   CardBody,
-  Flex,
+  CardHeader,
   FormControl,
   FormHelperText,
   FormLabel,
+  Grid,
   HStack,
   Heading,
   IconButton,
@@ -22,30 +23,25 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Tag,
   Text,
   Textarea,
-  VStack,
   useDisclosure,
   useToast,
 } from '@chakra-ui/react';
-import { FiArrowRight, FiEdit2, FiPlus, FiSliders, FiTrash2 } from 'react-icons/fi';
+import { FiCopy, FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { createTemplate, deleteTemplate, updateTemplate } from '../api';
 import { useAppData } from '../context/AppDataContext';
 
 const emptyTemplate = {
   name: '',
-  category: 'Onboarding',
+  category: 'General',
   content: '',
   variablesText: '',
   isShared: true,
 };
-
-const useCases = ['All', 'Popular', 'Onboarding', 'Return', 'Engagement', 'Transaction'];
-const channels = ['Website', 'Mobile', 'Messenger'];
 
 const extractVariables = (content) => {
   const matches = content.match(/{{\s*([a-zA-Z0-9_]+)\s*}}/g) || [];
@@ -72,24 +68,30 @@ const buildVariableObjects = (content, variablesText) => {
 };
 
 const Templates = () => {
-  const { templates, setTemplates } = useAppData();
+  const { templates, setTemplates, refreshTemplates } = useAppData();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All');
+  const [category, setCategory] = useState('all');
   const [draft, setDraft] = useState(emptyTemplate);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
+  const categories = useMemo(
+    () => ['all', ...new Set(templates.map((template) => template.category).filter(Boolean))],
+    [templates]
+  );
+
   const filteredTemplates = useMemo(() => {
     return templates.filter((template) => {
-      const matchesQuery = `${template.name} ${template.category} ${template.content}`.toLowerCase().includes(query.toLowerCase());
-      const matchesCategory = category === 'All' || template.category === category || (category === 'Popular' && template.isShared);
+      const matchesQuery = `${template.name} ${template.category} ${template.content}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+      const matchesCategory = category === 'all' || template.category === category;
       return matchesQuery && matchesCategory;
     });
   }, [templates, query, category]);
 
   const variablePreview = extractVariables(draft.content);
-  const previewContent = draft.content || 'Hi {{userName}}! Welcome to {{companyName}}. How may I be of help today?';
 
   const openCreateModal = () => {
     setEditingTemplate(null);
@@ -134,13 +136,18 @@ const Templates = () => {
       toast({ title: 'Template saved', status: 'success', duration: 2500 });
       onClose();
     } catch (error) {
+      toast({
+        title: 'Saved locally',
+        description: 'The API was unavailable, so this template is available in the current session only.',
+        status: 'warning',
+        duration: 4000,
+      });
       const localTemplate = { ...payload, id: editingTemplate?.id || `local-${Date.now()}` };
       setTemplates((prev) =>
         editingTemplate
           ? prev.map((template) => (template.id === editingTemplate.id ? localTemplate : template))
           : [localTemplate, ...prev]
       );
-      toast({ title: 'Saved locally', status: 'warning', duration: 3000 });
       onClose();
     }
   };
@@ -161,114 +168,122 @@ const Templates = () => {
   };
 
   return (
-    <Flex gap={5} align="stretch">
-      <Box bg="white" borderRadius="20px" p={5} w={{ base: '100%', lg: '220px' }} display={{ base: 'none', lg: 'block' }}>
-        <HStack mb={5}>
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" size="sm" borderRadius="full" />
-          <IconButton aria-label="Filter templates" icon={<FiSliders />} size="sm" borderRadius="full" />
-        </HStack>
-        <VStack align="stretch" spacing={1} color="#5f596d">
-          {useCases.map((item) => (
-            <Button key={item} size="sm" justifyContent="flex-start" variant="ghost" bg={category === item ? '#d9d5e6' : 'transparent'} onClick={() => setCategory(item)}>{item}</Button>
-          ))}
-          <Text fontSize="xs" color="#b1abbc" pt={3}>Channels</Text>
-          {channels.map((item) => (
-            <Button key={item} size="sm" justifyContent="flex-start" variant="ghost" bg={category === item ? '#d9d5e6' : 'transparent'} onClick={() => setCategory(item)}>{item}</Button>
-          ))}
-        </VStack>
-      </Box>
+    <Box>
+      <HStack justify="space-between" align="start" mb={6}>
+        <Box>
+          <Heading size="lg">Template Management</Heading>
+          <Text color="gray.600" mt={2}>
+            Create reusable supervisor responses. Variables use double braces and are clearly
+            highlighted before use, for example {'{{customerName}}'}.
+          </Text>
+        </Box>
+        <Button leftIcon={<FiPlus />} colorScheme="purple" onClick={openCreateModal}>
+          New Template
+        </Button>
+      </HStack>
 
-      <Box flex="1" bg="white" borderRadius="22px" p={{ base: 5, md: 8 }}>
-        <HStack justify="space-between" mb={7}>
-          <Heading size="md">Response Templates</Heading>
-          <Button leftIcon={<FiPlus />} bg="#4b3b83" color="white" borderRadius="full" onClick={openCreateModal}>Create Template</Button>
-        </HStack>
-        <HStack mb={6}>
-          <Button size="sm" borderRadius="full" bg="#4b3b83" color="white">My Templates</Button>
-          <Button size="sm" borderRadius="full" bg="#efedf4">Shared Templates</Button>
-        </HStack>
+      <Card mb={6}>
+        <CardBody>
+          <HStack spacing={4} align="end" flexWrap="wrap">
+            <FormControl maxW="420px">
+              <FormLabel>Search templates</FormLabel>
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, category, or content" />
+            </FormControl>
+            <FormControl maxW="240px">
+              <FormLabel>Category</FormLabel>
+              <Select value={category} onChange={(event) => setCategory(event.target.value)}>
+                {categories.map((item) => (
+                  <option key={item} value={item}>
+                    {item === 'all' ? 'All categories' : item}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+            <Button variant="outline" onClick={refreshTemplates}>Refresh</Button>
+          </HStack>
+        </CardBody>
+      </Card>
 
-        <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={7} maxW="850px">
-          {filteredTemplates.map((template) => {
-            const variables = template.variables?.length ? template.variables : buildVariableObjects(template.content, '');
-            return (
-              <Card key={template.id} border="1px solid" borderColor="#d9d5e6" borderRadius="16px" boxShadow="none" _hover={{ borderColor: '#4b3b83' }}>
-                <CardBody p={3}>
-                  <Box bg="#efedf4" borderRadius="10px" p={3} mb={3} h="74px" fontSize="xs" color="#5f596d" noOfLines={3}>{template.content}</Box>
-                  <Text fontWeight="800" fontSize="sm" noOfLines={2}>{template.name}</Text>
-                  <HStack mt={3} spacing={2} flexWrap="wrap">
-                    <Tag size="sm">#Chat</Tag>
-                    {variables.slice(0, 1).map((variable) => <Tag key={variable.name} size="sm">{'{{'}{variable.name}{'}}'}</Tag>)}
-                    <Badge>{template.category}</Badge>
+      <Grid templateColumns={{ base: '1fr', lg: 'repeat(3, 1fr)' }} gap={5}>
+        {filteredTemplates.map((template) => {
+          const variables = template.variables?.length ? template.variables : buildVariableObjects(template.content, '');
+          return (
+            <Card key={template.id} borderTop="4px solid" borderTopColor="purple.400">
+              <CardHeader pb={2}>
+                <HStack justify="space-between" align="start">
+                  <Box>
+                    <Heading size="md">{template.name}</Heading>
+                    <HStack mt={2}>
+                      <Badge colorScheme="purple">{template.category}</Badge>
+                      {template.isShared && <Badge colorScheme="green">Shared</Badge>}
+                    </HStack>
+                  </Box>
+                  <HStack>
+                    <IconButton aria-label="Edit template" icon={<FiEdit2 />} size="sm" onClick={() => openEditModal(template)} />
+                    <IconButton aria-label="Delete template" icon={<FiTrash2 />} size="sm" onClick={() => handleDelete(template.id)} />
                   </HStack>
-                  <HStack justify="center" mt={4} spacing={4}>
-                    <IconButton aria-label="Delete template" icon={<FiTrash2 />} size="sm" borderRadius="full" colorScheme="red" variant="ghost" onClick={() => handleDelete(template.id)} />
-                    <IconButton aria-label="Edit template" icon={<FiEdit2 />} size="sm" borderRadius="full" colorScheme="blue" variant="ghost" onClick={() => openEditModal(template)} />
-                    <IconButton aria-label="Copy template" icon={<FiArrowRight />} size="sm" borderRadius="full" colorScheme="green" variant="ghost" onClick={() => handleCopy(template.content)} />
-                  </HStack>
-                </CardBody>
-              </Card>
-            );
-          })}
-        </SimpleGrid>
-      </Box>
+                </HStack>
+              </CardHeader>
+              <CardBody pt={0}>
+                <Text color="gray.700" whiteSpace="pre-wrap" minH="112px">
+                  {template.content}
+                </Text>
+                <HStack mt={4} spacing={2} flexWrap="wrap">
+                  {variables.map((variable) => (
+                    <Tag key={variable.name} colorScheme="orange">{'{{'}{variable.name}{'}}'}</Tag>
+                  ))}
+                </HStack>
+                <Button mt={4} leftIcon={<FiCopy />} variant="outline" size="sm" onClick={() => handleCopy(template.content)}>
+                  Copy for conversation
+                </Button>
+              </CardBody>
+            </Card>
+          );
+        })}
+      </Grid>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="5xl" isCentered>
-        <ModalOverlay bg="blackAlpha.500" backdropFilter="blur(2px)" />
-        <ModalContent borderRadius="20px" bg="#f5f3fa" p={4}>
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{editingTemplate ? 'Edit Template' : 'Create Template'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Flex gap={6} direction={{ base: 'column', lg: 'row' }}>
-              <Box flex="1">
-                <ModalHeader px={0}>{editingTemplate ? 'Edit Template' : 'Create Template'}</ModalHeader>
-                <Stack bg="white" borderRadius="16px" p={5} spacing={4}>
-                  <FormControl isRequired>
-                    <FormLabel>Name</FormLabel>
-                    <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Template name" />
-                  </FormControl>
-                  <FormControl isRequired>
-                    <FormLabel>Title</FormLabel>
-                    <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Say Hi to welcome new visitors!" />
-                  </FormControl>
-                  <FormControl isRequired>
-                    <FormLabel>Category</FormLabel>
-                    <Select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>
-                      {[...useCases.slice(2), ...channels].map((item) => <option key={item}>{item}</option>)}
-                    </Select>
-                  </FormControl>
-                  <FormControl isRequired>
-                    <FormLabel>Content</FormLabel>
-                    <Textarea minH="130px" value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} placeholder="Hi {{userName}}! Welcome to {{companyName}}. How may I be of help today?" />
-                    <FormHelperText>Variables are shown with double braces. Detected: {variablePreview.length ? variablePreview.map((item) => `{{${item}}}`).join(', ') : 'none'}</FormHelperText>
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel>Variable descriptions</FormLabel>
-                    <Textarea value={draft.variablesText} onChange={(event) => setDraft({ ...draft, variablesText: event.target.value })} placeholder="userName: Customer name\ncompanyName: Brand name" />
-                  </FormControl>
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel mb="0">Share with Team</FormLabel>
-                    <Switch isChecked={draft.isShared} onChange={(event) => setDraft({ ...draft, isShared: event.target.checked })} />
-                  </FormControl>
-                </Stack>
-              </Box>
-              <Box w={{ base: '100%', lg: '330px' }}>
-                <Heading size="md" mt={4} mb={4}>Preview</Heading>
-                <Box bg="white" borderRadius="16px" p={5} minH="420px">
-                  <Box border="1px solid" borderColor="#edeaf4" borderRadius="14px" p={4} fontSize="sm">
-                    <Tag size="sm" mb={2}># Chat</Tag>
-                    <Text>{previewContent}</Text>
-                  </Box>
-                </Box>
-              </Box>
-            </Flex>
+            <Stack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>Name</FormLabel>
+                <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="e.g. Damaged item apology" />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Category</FormLabel>
+                <Input value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} placeholder="Shipping, Returns, Billing..." />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Message content</FormLabel>
+                <Textarea minH="180px" value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} placeholder="Hi {{customerName}}, I can help with order {{orderNumber}}." />
+                <FormHelperText>
+                  Variable substitution is indicated with double braces. Detected:{' '}
+                  {variablePreview.length ? variablePreview.map((item) => `{{${item}}}`).join(', ') : 'none'}
+                </FormHelperText>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Variable descriptions</FormLabel>
+                <Textarea value={draft.variablesText} onChange={(event) => setDraft({ ...draft, variablesText: event.target.value })} placeholder="customerName: Customer first name\norderNumber: Order ID from CRM" />
+              </FormControl>
+              <FormControl display="flex" alignItems="center">
+                <FormLabel mb="0">Share with all supervisors</FormLabel>
+                <Switch isChecked={draft.isShared} onChange={(event) => setDraft({ ...draft, isShared: event.target.checked })} />
+              </FormControl>
+            </Stack>
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
-            <Button bg="#4b3b83" color="white" onClick={handleSave} isDisabled={!draft.name || !draft.category || !draft.content}>Save</Button>
+            <Button colorScheme="purple" onClick={handleSave} isDisabled={!draft.name || !draft.category || !draft.content}>
+              Save Template
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </Flex>
+    </Box>
   );
 };
 
