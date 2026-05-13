@@ -14,8 +14,6 @@ import {
 
 const MetricsCard = ({ title, value, icon, change, changeType, color = 'blue' }) => {
   const bg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  
   return (
     <Box
       bg={bg}

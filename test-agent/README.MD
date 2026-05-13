@@ -195,3 +195,187 @@ Check the Docker logs: docker-compose logs <service-name>
 Ensure all services are running: docker ps
 Restart the environment if needed: docker-compose down && docker-compose up -d
 Good luck!
+
+## Implementation Notes
+
+This repository now implements the AI Agent Supervisor Workstation as a functional React and Express application:
+
+- **Monitoring dashboard:** Supervisors can review conversation health, active alerts, key metrics, and agent performance from the dashboard.
+- **Intervention workflow:** Conversation detail pages show complete message history, customer context, live quality signals, supervisor takeover, supervisor messaging, and return-to-AI controls with notes.
+- **Agent configuration:** The AI Agent screen supports model parameter tuning, capability toggles, knowledge-base access controls, escalation thresholds, and in-session configuration presets.
+- **Template feature:** The Templates screen supports template search/filtering, creation/editing, deletion, copy-to-conversation behavior, and explicit `{{variableName}}` substitution indicators. Conversation intervention includes a template usage interface that detects variables and asks supervisors to fill them before sending.
+
+### Local setup
+
+```bash
+cd test-agent
+npm install
+cd backend-starter && npm install
+cd ../frontend-starter && npm install
+```
+
+Run with Docker when MongoDB and Qdrant are needed:
+
+```bash
+cd test-agent
+docker-compose up -d
+```
+
+Or run services manually in separate terminals:
+
+```bash
+cd test-agent/backend-starter
+npm start
+```
+
+```bash
+cd test-agent/frontend-starter
+npm start
+```
+
+### Architecture overview
+
+- `backend-starter/server.js` mounts REST APIs for conversations, agents, interventions, knowledge bases, analytics, and response templates.
+- `backend-starter/routes/templates.js` provides CRUD endpoints for response templates and seeds sensible default templates if the database is empty.
+- `frontend-starter/src/context/AppDataContext.js` centralizes shared app state, API loading, WebSocket updates, and template fallback data.
+- `frontend-starter/src/pages/ConversationView.js` implements human-in-the-loop intervention and template usage.
+- `frontend-starter/src/pages/AgentConfig.js` implements runtime agent tuning and presets.
+- `frontend-starter/src/pages/Templates.js` implements template management.
+
+### Challenges and solutions
+
+- **Figma access:** The linked Figma design requires external access, so the implementation follows the provided challenge screen descriptions and uses the existing Chakra UI design system to reproduce the intended supervisor workstation layout.
+- **Template variable clarity:** Variable substitution is represented with double braces, for example `{{customerName}}`, and the UI detects and labels every variable before supervisors use a template.
+- **Offline API resilience:** The frontend provides template fallback data and optimistic local updates so the interface remains usable while backend services or MongoDB are unavailable during local evaluation.
+
+## How to Run This Code
+
+### Recommended: run the full Docker environment
+
+Use this when you want MongoDB, Qdrant, backend, frontend, and supporting services started together.
+
+```bash
+cd test-agent
+docker-compose up -d
+```
+
+Then open:
+
+- Frontend: http://localhost:3000
+- Backend health check: http://localhost:8080/health
+- API docs: http://localhost:8080/api-docs
+
+If you need to reset sample data:
+
+```bash
+cd test-agent
+docker-compose exec backend npm run seed
+```
+
+To stop everything:
+
+```bash
+cd test-agent
+docker-compose down
+```
+
+### Manual local development
+
+Use this if MongoDB is already running locally or you only want to work on one service at a time.
+
+Terminal 1 — backend:
+
+```bash
+cd test-agent/backend-starter
+npm install
+npm start
+```
+
+Terminal 2 — frontend:
+
+```bash
+cd test-agent/frontend-starter
+npm install
+npm start
+```
+
+Useful validation commands:
+
+```bash
+cd test-agent/frontend-starter
+npm run build
+```
+
+```bash
+cd test-agent/backend-starter
+node -e "require('./routes/templates'); console.log('templates route ok')"
+```
+
+## Figma UI Frames to Code Workflow
+
+Do not treat Figma-to-code output as final production code. The fastest reliable workflow is to use Figma for structure, measurements, tokens, and assets, then map the generated output into this app's existing React + Chakra UI components.
+
+### Recommended workflow for this project
+
+1. **Open the provided Figma file and inspect the target frame**
+   - Use the frame URL or node ID from the challenge.
+   - Confirm desktop width, spacing, typography, colors, icons, and component states.
+2. **Prepare the Figma frame before generating code**
+   - Name layers clearly, for example `Sidebar`, `MetricCard`, `ConversationRow`, `TemplateModal`.
+   - Use Auto Layout for rows, cards, sidebars, and modal content.
+   - Convert repeated UI into Figma components so generated code is less duplicated.
+   - Export icons/images as SVG or PNG only when they are real assets; recreate ordinary layout with Chakra components.
+3. **Use Figma Dev Mode first**
+   - Inspect spacing, colors, font sizes, border radii, shadows, and assets.
+   - Copy values into `frontend-starter/src/theme.js` or directly into Chakra props when they are screen-specific.
+4. **Use a design-to-code extension only for a first draft**
+   - Good options to try: Figma Dev Mode MCP/Code Connect, Anima, Locofy, Builder.io Visual Copilot, or Figma-to-Code style plugins.
+   - Export React when available, otherwise export HTML/CSS and manually translate to Chakra UI.
+5. **Convert generated markup into project components**
+   - Put page-level screens in `frontend-starter/src/pages`.
+   - Put reusable UI in `frontend-starter/src/components`.
+   - Replace generated `<div>` trees with Chakra primitives such as `Box`, `Flex`, `Grid`, `Stack`, `Card`, `Button`, `Input`, `Select`, `Tabs`, and `Modal`.
+6. **Wire real data and actions**
+   - Use `frontend-starter/src/api/index.js` for backend calls.
+   - Use `frontend-starter/src/context/AppDataContext.js` for shared conversations, agents, knowledge bases, and templates.
+   - Keep generated placeholder data out of production components once API data exists.
+7. **Validate and iterate**
+   - Run `npm run build` from `frontend-starter`.
+   - Compare the browser screen against Figma and adjust Chakra spacing/color props.
+
+### Extension/tool guidance
+
+- **Figma Dev Mode + MCP + Code Connect:** Best for teams that already have React components. It helps AI coding tools understand the selected Figma frame and how design components map to code components.
+- **Anima:** Useful for exporting React/HTML/CSS/Tailwind from polished frames. Good for quick static screen drafts.
+- **Locofy:** Useful for generating React/Next/Vue-style responsive code and reviewing a generated component structure before export.
+- **Builder.io Visual Copilot:** Useful for converting Figma designs into code drafts and then refining in your app.
+- **Figma-to-Code community plugins:** Useful for rough HTML/Tailwind/React structure, but expect manual cleanup.
+
+### Example conversion prompt for an AI coding tool
+
+```text
+Convert the selected Figma frame into React using Chakra UI for this repository.
+Reuse existing components from frontend-starter/src/components where possible.
+Use AppDataContext for conversations, agents, and templates.
+Do not hardcode API data unless it is fallback/demo data.
+Use {{variableName}} formatting for template substitutions and show editable fields for each variable.
+```
+
+## What Else Should Be Done Before Final Submission
+
+- **Design polish:** Compare each route against the Figma frames and tune spacing, colors, typography, icon choices, and responsive behavior.
+- **Backend integration check:** Run the Docker environment and verify template CRUD, intervention, release, and supervisor messages against MongoDB-backed APIs.
+- **End-to-end smoke test:** Open Dashboard, Conversation Detail, Agent Configuration, Templates, and Analytics in the browser and confirm no console errors.
+- **Seed data quality:** Add more sample conversations/templates if evaluators need richer dashboard states.
+- **Automated tests:** Add unit/integration tests for template CRUD and critical React interactions if time allows.
+- **Security/auth note:** The challenge has no authentication, but a production workstation should add supervisor authentication and audit logging.
+
+### Urgent response-template and real-time additions
+
+The latest implementation also covers the mid-session urgent requirements:
+
+- Response templates support `{{variable_name}}` placeholders, categories, and team sharing.
+- Supervisors can open the template library from a conversation, insert a template, fill variables, preview the completed message, and send it after takeover.
+- Dashboard metrics subscribe to `GET /api/analytics/stream`, an SSE endpoint that emits refreshed metrics every 2 seconds.
+- The dashboard uses responsive metric cards and mobile conversation cards so it is usable on small screens.
+- Conversation replies can be composed by typing or by voice through the browser Web Speech API; recognized speech is appended to the response composer.

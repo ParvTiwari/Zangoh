@@ -1,22 +1,16 @@
 // src/components/Layout.js
 import React from 'react';
-import { Box, Flex, useColorMode } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
 const Layout = ({ children }) => {
-  const { colorMode } = useColorMode();
-  
   return (
-    <Flex direction="row" minHeight="100vh">
+    <Flex minH="100vh" bg="#eeedf4">
       <Sidebar />
-      <Box
-        flex="1"
-        bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'}
-        minH="100vh"
-      >
+      <Box flex="1" ml={{ base: 0, md: '210px' }} minW={0}>
         <Header />
-        <Box as="main" p={4} ml={{ base: 0, md: '250px' }}>
+        <Box as="main" px={{ base: 4, md: 5 }} pb={6}>
           {children}
         </Box>
       </Box>

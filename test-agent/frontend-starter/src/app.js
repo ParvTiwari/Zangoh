@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import AgentConfig from './pages/AgentConfig';
 import ConversationView from './pages/ConversationView';
 import Analysis from './pages/Analysis';
+import Templates from './pages/Templates';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { AppDataProvider } from './context/AppDataContext';
 
@@ -23,7 +24,9 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/conversation/:id" element={<ConversationView />} />
                   <Route path="/agent-config" element={<AgentConfig />} />
-                  <Route path="/Analysis" element={<Analysis/>} />
+                  <Route path="/analysis" element={<Analysis />} />
+                  <Route path="/templates" element={<Templates />} />
+                  <Route path="/conversationView" element={<Dashboard />} />
                 </Routes>
               </Layout>
             </Box>

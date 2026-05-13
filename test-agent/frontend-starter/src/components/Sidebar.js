@@ -2,156 +2,79 @@
 import React from 'react';
 import {
   Box,
+  Button,
   Flex,
+  Icon,
   Text,
   VStack,
-  Icon,
-  useColorMode,
-  Divider,
-  Button,
 } from '@chakra-ui/react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  FiHome, 
-  FiSettings, 
-  FiMessageCircle, 
-  FiBarChart2, 
-  FiUsers,
-  FiHelpCircle,
-  FiLogOut 
+import {
+  FiBriefcase,
+  FiHome,
+  FiMessageCircle,
+  FiSettings,
+  FiZap,
 } from 'react-icons/fi';
-import { useAppData } from '../context/AppDataContext';
 
 const Sidebar = () => {
-  const { colorMode } = useColorMode();
   const location = useLocation();
-  const { agents } = useAppData();
-  
-  const bgColor = colorMode === 'dark' ? 'gray.900' : 'white';
-  const borderColor = colorMode === 'dark' ? 'gray.700' : 'gray.200';
-  
-  const isActive = (path) => location.pathname === path;
-  
+  const isActive = (path) =>
+    location.pathname === path ||
+    (path === '/conversationView' && location.pathname.startsWith('/conversation/'));
+
   const navItems = [
     { name: 'Dashboard', icon: FiHome, path: '/' },
     { name: 'Conversations', icon: FiMessageCircle, path: '/conversationView' },
-    { name: 'AI Agent', icon: FiSettings, path: '/agent-config' },
-    { name: 'Templates', icon: FiBarChart2, path: '/analysis' },
+    { name: 'AI Agents', icon: FiBriefcase, path: '/agent-config' },
+    { name: 'Templates', icon: FiZap, path: '/templates' },
   ];
-  
+
   return (
     <Box
       position="fixed"
-      left={0}
-      w={'250px'}
-      top={0}
-      h="100%"
-      bg={bgColor}
-      borderRight="1px"
-      borderColor={borderColor}
-      display={{ base: 'none', md: 'block' }}
+      left={5}
+      top="92px"
+      bottom={5}
+      w="170px"
+      bg="white"
+      borderRadius="20px"
+      display={{ base: 'none', md: 'flex' }}
+      flexDirection="column"
+      justifyContent="space-between"
       py={5}
-      px={3}
-      overflow="auto"
+      px={4}
+      boxShadow="0 18px 45px rgba(41, 35, 74, 0.08)"
     >
-      <Flex justify="center" align="center" mb={8}>
-        <Text fontSize="xl" fontWeight="bold" color="brand.500">
-          Zangoh AI Supervisor
-        </Text>
+      <VStack spacing={2} align="stretch">
+        {navItems.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <Button
+              key={item.path}
+              as={Link}
+              to={item.path}
+              variant="ghost"
+              justifyContent="flex-start"
+              h="38px"
+              px={3}
+              leftIcon={<Icon as={item.icon} boxSize={4} />}
+              bg={active ? '#d9d5e6' : 'transparent'}
+              color={active ? '#2f2943' : '#5f596d'}
+              fontWeight={active ? '700' : '500'}
+              borderRadius="8px"
+              _hover={{ bg: '#e5e2ee' }}
+            >
+              {item.name}
+            </Button>
+          );
+        })}
+      </VStack>
+
+      <Flex align="center" gap={3} color="#2f2943" px={3} py={2}>
+        <Icon as={FiSettings} />
+        <Text fontWeight="600">Settings</Text>
       </Flex>
-      
-      <VStack spacing={1} align="stretch" mb={6}>
-        {navItems.map((item) => (
-          <Button
-            key={item.path}
-            as={Link}
-            to={item.path}
-            variant="ghost"
-            justifyContent="flex-start"
-            py={3}
-            pl={4}
-            leftIcon={<Icon as={item.icon} boxSize={5} />}
-            bg={isActive(item.path) ? 'brand.50' : 'transparent'}
-            color={isActive(item.path) ? 'brand.500' : 'gray.600'}
-            borderRadius="md"
-            _hover={{
-              bg: 'brand.50',
-              color: 'brand.500',
-            }}
-          >
-            {item.name}
-          </Button>
-        ))}
-      </VStack>
-      
-      <Text
-        px={4}
-        fontSize="sm"
-        fontWeight="bold"
-        color="gray.500"
-        mb={2}
-        textTransform="uppercase"
-      >
-        Active Agents
-      </Text>
-      
-      <VStack spacing={1} align="stretch" mb={6}>
-        {agents.slice(0, 3).map((agent) => (
-          <Flex
-            key={agent.id}
-            py={2}
-            px={4}
-            align="center"
-            borderRadius="md"
-            cursor="pointer"
-            _hover={{ bg: 'gray.100' }}
-          >
-            <Box
-              w={2}
-              h={2}
-              borderRadius="full"
-              bg={agent.status === 'active' ? 'green.400' : 'gray.400'}
-              mr={3}
-            />
-            <Text fontSize="sm" noOfLines={1}>
-              {agent.name}
-            </Text>
-          </Flex>
-        ))}
-      </VStack>
-      
-      <Divider mb={6} />
-      
-      <VStack spacing={1} align="stretch">
-        <Button
-          variant="ghost"
-          justifyContent="flex-start"
-          py={3}
-          pl={4}
-          leftIcon={<Icon as={FiHelpCircle} boxSize={5} />}
-          color="gray.600"
-          borderRadius="md"
-          _hover={{
-            bg: 'gray.100',
-          }}
-        >
-          Help & Resources
-        </Button>
-        <Button
-          variant="ghost"
-          justifyContent="flex-start"
-          py={3}
-          pl={4}
-          leftIcon={<Icon as={FiLogOut} boxSize={5} />}
-          color="gray.600"
-          borderRadius="md"
-          _hover={{
-            bg: 'gray.100',
-          }}
-        >
-          Log Out
-        </Button>
-      </VStack>
     </Box>
   );
 };
