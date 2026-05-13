@@ -11,10 +11,9 @@ import {
   InputLeftElement,
   Select,
   Stack,
-  Divider,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiSearch, FiAlertCircle, FiCheckCircle, FiMessageSquare, FiClock } from 'react-icons/fi';
+import { FiSearch, FiAlertCircle, FiMessageSquare, FiClock } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { timeAgo } from '../utils/dateUtils';
 

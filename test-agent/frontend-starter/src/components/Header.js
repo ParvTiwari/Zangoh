@@ -7,7 +7,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Avatar,
   Menu,
   MenuButton,
   MenuList,

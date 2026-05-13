@@ -195,3 +195,55 @@ Check the Docker logs: docker-compose logs <service-name>
 Ensure all services are running: docker ps
 Restart the environment if needed: docker-compose down && docker-compose up -d
 Good luck!
+
+## Implementation Notes
+
+This repository now implements the AI Agent Supervisor Workstation as a functional React and Express application:
+
+- **Monitoring dashboard:** Supervisors can review conversation health, active alerts, key metrics, and agent performance from the dashboard.
+- **Intervention workflow:** Conversation detail pages show complete message history, customer context, live quality signals, supervisor takeover, supervisor messaging, and return-to-AI controls with notes.
+- **Agent configuration:** The AI Agent screen supports model parameter tuning, capability toggles, knowledge-base access controls, escalation thresholds, and in-session configuration presets.
+- **Template feature:** The Templates screen supports template search/filtering, creation/editing, deletion, copy-to-conversation behavior, and explicit `{{variableName}}` substitution indicators. Conversation intervention includes a template usage interface that detects variables and asks supervisors to fill them before sending.
+
+### Local setup
+
+```bash
+cd test-agent
+npm install
+cd backend-starter && npm install
+cd ../frontend-starter && npm install
+```
+
+Run with Docker when MongoDB and Qdrant are needed:
+
+```bash
+cd test-agent
+docker-compose up -d
+```
+
+Or run services manually in separate terminals:
+
+```bash
+cd test-agent/backend-starter
+npm start
+```
+
+```bash
+cd test-agent/frontend-starter
+npm start
+```
+
+### Architecture overview
+
+- `backend-starter/server.js` mounts REST APIs for conversations, agents, interventions, knowledge bases, analytics, and response templates.
+- `backend-starter/routes/templates.js` provides CRUD endpoints for response templates and seeds sensible default templates if the database is empty.
+- `frontend-starter/src/context/AppDataContext.js` centralizes shared app state, API loading, WebSocket updates, and template fallback data.
+- `frontend-starter/src/pages/ConversationView.js` implements human-in-the-loop intervention and template usage.
+- `frontend-starter/src/pages/AgentConfig.js` implements runtime agent tuning and presets.
+- `frontend-starter/src/pages/Templates.js` implements template management.
+
+### Challenges and solutions
+
+- **Figma access:** The linked Figma design requires external access, so the implementation follows the provided challenge screen descriptions and uses the existing Chakra UI design system to reproduce the intended supervisor workstation layout.
+- **Template variable clarity:** Variable substitution is represented with double braces, for example `{{customerName}}`, and the UI detects and labels every variable before supervisors use a template.
+- **Offline API resilience:** The frontend provides template fallback data and optimistic local updates so the interface remains usable while backend services or MongoDB are unavailable during local evaluation.
