@@ -1,7 +1,7 @@
 // src/api/index.js
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = process.env.REACT_APP_API_URL || '';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -10,19 +10,14 @@ const api = axios.create({
   },
 });
 
-// Error handling interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Add custom error handling here
     console.error('API Error:', error.response || error.message);
     return Promise.reject(error);
   }
 );
 
-// API functions
-
-// Conversations
 export const getConversations = async (filters = {}) => {
   const params = new URLSearchParams(filters);
   const response = await api.get(`/api/conversations?${params}`);
@@ -49,7 +44,6 @@ export const addTags = async (conversationId, tags) => {
   return response.data;
 };
 
-// Agents
 export const getAgents = async () => {
   const response = await api.get('/api/agents');
   return response.data;
@@ -70,24 +64,41 @@ export const getAgentMetrics = async (id) => {
   return response.data;
 };
 
-// Intervention
-export const interveneInConversation = async (conversationId, supervisorId, notes) => {
+export const interveneInConversation = async (conversationId, supervisorId = 'supervisor-1', notes = '') => {
   const response = await api.post('/api/intervene', { conversationId, supervisorId, notes });
   return response.data;
 };
 
-export const releaseIntervention = async (conversationId, supervisorNotes) => {
+export const releaseIntervention = async (conversationId, supervisorNotes = '') => {
   const response = await api.post('/api/intervene/release', { conversationId, supervisorNotes });
   return response.data;
 };
 
-// Knowledge Base
 export const getKnowledgeBases = async () => {
   const response = await api.get('/api/knowledge-base');
   return response.data;
 };
 
-// Analytics
+export const getTemplates = async (filters = {}) => {
+  const response = await api.get('/api/templates', { params: filters });
+  return response.data;
+};
+
+export const createTemplate = async (template) => {
+  const response = await api.post('/api/templates', template);
+  return response.data;
+};
+
+export const updateTemplate = async (id, template) => {
+  const response = await api.patch(`/api/templates/${id}`, template);
+  return response.data;
+};
+
+export const deleteTemplate = async (id) => {
+  const response = await api.delete(`/api/templates/${id}`);
+  return response.data;
+};
+
 export const getAnalytics = async (params) => {
   const response = await api.get('/api/analytics', { params });
   return response.data;

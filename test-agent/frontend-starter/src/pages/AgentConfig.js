@@ -1,196 +1,275 @@
-import React, { useState } from 'react';
+// src/pages/AgentConfig.js
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Badge,
   Box,
   Button,
-  Flex,
+  Card,
+  CardBody,
+  CardHeader,
+  Checkbox,
+  Divider,
+  FormControl,
+  FormLabel,
+  Grid,
+  HStack,
   Heading,
+  Input,
+  NumberInput,
+  NumberInputField,
   Select,
   Slider,
-  SliderTrack,
   SliderFilledTrack,
   SliderThumb,
+  SliderTrack,
+  Stack,
+  Stat,
+  StatLabel,
+  StatNumber,
   Text,
-  VStack,
-  Checkbox,
-  HStack,
-  Input,
-  Tag,
-  TagLabel,
-  TagCloseButton,
-  useColorModeValue,
+  useToast,
 } from '@chakra-ui/react';
-
-const capabilitiesList = ['Decision Making', 'Autonomy', 'Learning', 'Perception'];
+import { updateAgentConfig } from '../api';
+import { useAppData } from '../context/AppDataContext';
 
 const AgentConfig = () => {
-  const [selectedAgent, setSelectedAgent] = useState('CSR AI Agent');
-  const [topP, setTopP] = useState(0.7);
-  const [speed, setSpeed] = useState(0.5);
-  const [personality, setPersonality] = useState(0.5);
-  const [stability, setStability] = useState(0.5);
-  const [maxTokens, setMaxTokens] = useState(10);
-  const [capabilities, setCapabilities] = useState(['Decision Making', 'Perception']);
-  const [kbAccess, setKbAccess] = useState({
-    permissions: false,
-    internal: true,
-    public: true,
-  });
-  const [escalationMinutes, setEscalationMinutes] = useState(10);
+  const { agents, updateAgent } = useAppData();
+  const toast = useToast();
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [draft, setDraft] = useState(null);
+  const [presets, setPresets] = useState([]);
+  const [presetName, setPresetName] = useState('');
 
-  const toggleCapability = (capability) => {
-    setCapabilities((prev) =>
-      prev.includes(capability)
-        ? prev.filter((c) => c !== capability)
-        : [...prev, capability]
-    );
-  };
+  const selectedAgent = useMemo(
+    () => agents.find((agent) => agent.id === selectedAgentId) || agents[0],
+    [agents, selectedAgentId]
+  );
 
-  const handleReset = () => {
-    setTopP(0.7);
-    setSpeed(0.5);
-    setPersonality(0.5);
-    setStability(0.5);
-    setMaxTokens(10);
-    setCapabilities(['Decision Making', 'Perception']);
-    setKbAccess({ permissions: false, internal: true, public: true });
-    setEscalationMinutes(10);
-  };
+  useEffect(() => {
+    if (agents.length && !selectedAgentId) setSelectedAgentId(agents[0].id);
+  }, [agents, selectedAgentId]);
 
-  const handleSave = () => {
-    console.log('Saved configuration:', {
-      selectedAgent,
-      topP,
-      speed,
-      personality,
-      stability,
-      maxTokens,
-      capabilities,
-      kbAccess,
-      escalationMinutes,
+  useEffect(() => {
+    if (!selectedAgent) return;
+    setDraft({
+      parameters: {
+        temperature: selectedAgent.parameters?.temperature ?? 0.7,
+        top_p: selectedAgent.parameters?.top_p ?? 1,
+        max_tokens: selectedAgent.parameters?.max_tokens ?? 150,
+      },
+      capabilities: selectedAgent.capabilities || [],
+      knowledgeBases: selectedAgent.knowledgeBases || [],
+      escalationThresholds: {
+        lowConfidence: selectedAgent.escalationThresholds?.lowConfidence ?? 0.4,
+        negativeSentiment: selectedAgent.escalationThresholds?.negativeSentiment ?? 0.3,
+        responseTime: selectedAgent.escalationThresholds?.responseTime ?? 20,
+      },
     });
+  }, [selectedAgent]);
+
+  const updateParameter = (key, value) => {
+    setDraft((prev) => ({ ...prev, parameters: { ...prev.parameters, [key]: value } }));
   };
 
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const toggleCapability = (capabilityId) => {
+    setDraft((prev) => ({
+      ...prev,
+      capabilities: prev.capabilities.map((capability) =>
+        capability.id === capabilityId ? { ...capability, enabled: !capability.enabled } : capability
+      ),
+    }));
+  };
+
+  const toggleKnowledgeBase = (knowledgeBaseId) => {
+    setDraft((prev) => ({
+      ...prev,
+      knowledgeBases: prev.knowledgeBases.map((knowledgeBase) =>
+        knowledgeBase.id === knowledgeBaseId
+          ? { ...knowledgeBase, enabled: !knowledgeBase.enabled }
+          : knowledgeBase
+      ),
+    }));
+  };
+
+  const updateThreshold = (key, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      escalationThresholds: { ...prev.escalationThresholds, [key]: value },
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      const result = await updateAgentConfig(selectedAgent.id, draft);
+      updateAgent(selectedAgent.id, result.agent || { ...selectedAgent, ...draft });
+      toast({ title: 'Agent configuration saved', status: 'success', duration: 2500 });
+    } catch (error) {
+      updateAgent(selectedAgent.id, { ...selectedAgent, ...draft });
+      toast({ title: 'Configuration saved locally', status: 'warning', duration: 3000 });
+    }
+  };
+
+  const savePreset = () => {
+    if (!presetName.trim()) return;
+    setPresets((prev) => [{ name: presetName.trim(), config: draft }, ...prev]);
+    setPresetName('');
+    toast({ title: 'Preset saved', status: 'success', duration: 2000 });
+  };
+
+  const loadPreset = (preset) => {
+    setDraft(preset.config);
+    toast({ title: `Loaded ${preset.name}`, status: 'info', duration: 2000 });
+  };
+
+  if (!selectedAgent || !draft) {
+    return <Text>Loading agent configuration...</Text>;
+  }
 
   return (
-    <Box p={10} maxW="1000px" mx="auto">
-      <Flex justify="space-between" align="center" mb={8}>
-        <Heading fontSize="2xl">Configure your AI Agent</Heading>
-        <HStack>
-          <Button variant="outline" onClick={handleReset}>Reset</Button>
-          <Button colorScheme="purple" onClick={handleSave}>Save Changes</Button>
-        </HStack>
-      </Flex>
-
-      <Box
-        bg={cardBg}
-        p={8}
-        borderRadius="xl"
-        boxShadow="lg"
-        border={`1px solid ${borderColor}`}
-      >
-        <Box mb={8}>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Agent</Text>
-          <Select size="lg" value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} maxW="300px">
-            <option>CSR AI Agent</option>
-            <option>Sales AI Agent</option>
-            <option>Support AI Agent</option>
-          </Select>
-        </Box>
-
-        <Flex flexWrap="wrap" gap={8} mb={8}>
-          {[
-            { label: 'Top-p', value: topP, setter: setTopP },
-            { label: 'Speed', value: speed, setter: setSpeed },
-            { label: 'Personality', value: personality, setter: setPersonality },
-            { label: 'Stability', value: stability, setter: setStability },
-          ].map(({ label, value, setter }) => (
-            <Box key={label} flex="1" minW="220px">
-              <Text fontSize="md" mb={2}>{label}</Text>
-              <Slider value={value} onChange={setter} min={0} max={1} step={0.01}>
-                <SliderTrack>
-                  <SliderFilledTrack bg="purple.500" />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-              <Text fontSize="sm" color="gray.600" mt={1}>{value.toFixed(2)}</Text>
-            </Box>
-          ))}
-
-          <Box>
-            <Text fontSize="md" mb={2}>Max Tokens</Text>
-            <Input
-              type="number"
-              value={maxTokens}
-              size="lg"
-              onChange={(e) => setMaxTokens(Number(e.target.value))}
-              w="100px"
-            />
-          </Box>
-        </Flex>
-
-        <Box mb={8}>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Capabilities</Text>
-          <HStack spacing={4} wrap="wrap">
-            {capabilitiesList.map((cap) => {
-              const isActive = capabilities.includes(cap);
-              return (
-                <Tag
-                  size="lg"
-                  variant={isActive ? 'solid' : 'outline'}
-                  colorScheme="purple"
-                  cursor="pointer"
-                  onClick={() => toggleCapability(cap)}
-                  key={cap}
-                >
-                  <TagLabel>{cap}</TagLabel>
-                  {isActive && <TagCloseButton />}
-                </Tag>
-              );
-            })}
-          </HStack>
-        </Box>
-
-        <Box mb={8}>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Knowledge Base Access</Text>
-          <VStack align="start" spacing={3}>
-            <Checkbox
-              isChecked={kbAccess.permissions}
-              onChange={() => setKbAccess({ ...kbAccess, permissions: !kbAccess.permissions })}
-            >
-              Permissions
-            </Checkbox>
-            <Checkbox
-              isChecked={kbAccess.internal}
-              onChange={() => setKbAccess({ ...kbAccess, internal: !kbAccess.internal })}
-            >
-              Internal Articles
-            </Checkbox>
-            <Checkbox
-              isChecked={kbAccess.public}
-              onChange={() => setKbAccess({ ...kbAccess, public: !kbAccess.public })}
-            >
-              Public Articles
-            </Checkbox>
-          </VStack>
-        </Box>
-
+    <Box>
+      <HStack justify="space-between" align="start" mb={6}>
         <Box>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Escalation Threshold</Text>
-          <Flex align="center" gap={2}>
-            <Text>Escalate if Agent hasn’t responded in</Text>
-            <Input
-              type="number"
-              size="lg"
-              value={escalationMinutes}
-              onChange={(e) => setEscalationMinutes(Number(e.target.value))}
-              width="80px"
-            />
-            <Text>minutes</Text>
-          </Flex>
+          <Heading size="lg">Agent Configuration</Heading>
+          <Text color="gray.600" mt={2}>Tune behavior, capabilities, knowledge access, escalation thresholds, and reusable presets.</Text>
         </Box>
-      </Box>
+        <HStack>
+          <Button variant="outline" onClick={() => setDraft({
+            parameters: selectedAgent.parameters,
+            capabilities: selectedAgent.capabilities,
+            knowledgeBases: selectedAgent.knowledgeBases,
+            escalationThresholds: selectedAgent.escalationThresholds,
+          })}>Reset</Button>
+          <Button colorScheme="purple" onClick={handleSave}>Save changes</Button>
+        </HStack>
+      </HStack>
+
+      <Grid templateColumns={{ base: '1fr', xl: '2fr 1fr' }} gap={6}>
+        <Stack spacing={6}>
+          <Card>
+            <CardHeader>
+              <HStack justify="space-between">
+                <Box>
+                  <Heading size="md">Selected AI agent</Heading>
+                  <Text color="gray.500">Choose which production agent to configure.</Text>
+                </Box>
+                <Badge colorScheme={selectedAgent.status === 'active' ? 'green' : 'gray'}>{selectedAgent.status}</Badge>
+              </HStack>
+            </CardHeader>
+            <CardBody>
+              <FormControl maxW="420px">
+                <FormLabel>Agent</FormLabel>
+                <Select value={selectedAgent.id} onChange={(event) => setSelectedAgentId(event.target.value)}>
+                  {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {agent.model}</option>)}
+                </Select>
+              </FormControl>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader><Heading size="md">Model parameters</Heading></CardHeader>
+            <CardBody>
+              <Stack spacing={6}>
+                <FormControl>
+                  <FormLabel>Temperature: {draft.parameters.temperature}</FormLabel>
+                  <Slider min={0} max={1} step={0.05} value={draft.parameters.temperature} onChange={(value) => updateParameter('temperature', value)}>
+                    <SliderTrack><SliderFilledTrack /></SliderTrack><SliderThumb />
+                  </Slider>
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Top P: {draft.parameters.top_p}</FormLabel>
+                  <Slider min={0} max={1} step={0.05} value={draft.parameters.top_p} onChange={(value) => updateParameter('top_p', value)}>
+                    <SliderTrack><SliderFilledTrack /></SliderTrack><SliderThumb />
+                  </Slider>
+                </FormControl>
+                <FormControl maxW="240px">
+                  <FormLabel>Max tokens</FormLabel>
+                  <NumberInput min={50} max={2000} value={draft.parameters.max_tokens} onChange={(_, value) => updateParameter('max_tokens', value)}>
+                    <NumberInputField />
+                  </NumberInput>
+                </FormControl>
+              </Stack>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader><Heading size="md">Capabilities and knowledge</Heading></CardHeader>
+            <CardBody>
+              <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={6}>
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Capabilities</Text>
+                  <Stack>
+                    {draft.capabilities.map((capability) => (
+                      <Checkbox key={capability.id} isChecked={capability.enabled} onChange={() => toggleCapability(capability.id)}>{capability.name}</Checkbox>
+                    ))}
+                  </Stack>
+                </Box>
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Knowledge bases</Text>
+                  <Stack>
+                    {draft.knowledgeBases.map((knowledgeBase) => (
+                      <Checkbox key={knowledgeBase.id} isChecked={knowledgeBase.enabled} onChange={() => toggleKnowledgeBase(knowledgeBase.id)}>{knowledgeBase.name}</Checkbox>
+                    ))}
+                  </Stack>
+                </Box>
+              </Grid>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader><Heading size="md">Escalation thresholds</Heading></CardHeader>
+            <CardBody>
+              <Grid templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }} gap={4}>
+                <FormControl>
+                  <FormLabel>Low confidence</FormLabel>
+                  <Input type="number" step="0.05" value={draft.escalationThresholds.lowConfidence} onChange={(event) => updateThreshold('lowConfidence', Number(event.target.value))} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Negative sentiment</FormLabel>
+                  <Input type="number" step="0.05" value={draft.escalationThresholds.negativeSentiment} onChange={(event) => updateThreshold('negativeSentiment', Number(event.target.value))} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Response time (seconds)</FormLabel>
+                  <Input type="number" value={draft.escalationThresholds.responseTime} onChange={(event) => updateThreshold('responseTime', Number(event.target.value))} />
+                </FormControl>
+              </Grid>
+            </CardBody>
+          </Card>
+        </Stack>
+
+        <Stack spacing={6}>
+          <Card>
+            <CardHeader><Heading size="md">Performance snapshot</Heading></CardHeader>
+            <CardBody>
+              <Grid templateColumns="1fr 1fr" gap={4}>
+                <Stat><StatLabel>Conversations</StatLabel><StatNumber>{selectedAgent.metrics?.conversations || 0}</StatNumber></Stat>
+                <Stat><StatLabel>Avg response</StatLabel><StatNumber>{selectedAgent.metrics?.avgResponseTime || 0}s</StatNumber></Stat>
+                <Stat><StatLabel>Satisfaction</StatLabel><StatNumber>{Math.round((selectedAgent.metrics?.satisfaction || 0) * 100)}%</StatNumber></Stat>
+                <Stat><StatLabel>Escalation</StatLabel><StatNumber>{Math.round((selectedAgent.metrics?.escalationRate || 0) * 100)}%</StatNumber></Stat>
+              </Grid>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader><Heading size="md">Configuration presets</Heading></CardHeader>
+            <CardBody>
+              <HStack mb={4}>
+                <Input value={presetName} onChange={(event) => setPresetName(event.target.value)} placeholder="Preset name" />
+                <Button onClick={savePreset}>Save</Button>
+              </HStack>
+              <Divider mb={4} />
+              <Stack>
+                {presets.length === 0 && <Text color="gray.500">No presets saved in this session.</Text>}
+                {presets.map((preset) => (
+                  <HStack key={preset.name} justify="space-between">
+                    <Text>{preset.name}</Text>
+                    <Button size="sm" variant="outline" onClick={() => loadPreset(preset)}>Load</Button>
+                  </HStack>
+                ))}
+              </Stack>
+            </CardBody>
+          </Card>
+        </Stack>
+      </Grid>
     </Box>
   );
 };

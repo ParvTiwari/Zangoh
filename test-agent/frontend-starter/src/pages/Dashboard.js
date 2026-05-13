@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   Box,
   Flex,
-  Grid,
   Heading,
   Text,
   Tab,
@@ -15,9 +14,8 @@ import {
   SimpleGrid,
   Button,
   Badge,
-  Icon,
 } from '@chakra-ui/react';
-import { FiMessageCircle, FiUsers, FiClock, FiThumbsUp, FiAlertCircle } from 'react-icons/fi';
+import { FiMessageCircle, FiClock, FiThumbsUp, FiAlertCircle } from 'react-icons/fi';
 import { useAppData } from '../context/AppDataContext';
 import ConversationList from '../components/ConversationList';
 import MetricsCard from '../components/MetricsCard';

@@ -14,7 +14,6 @@ import {
   HStack,
   Tag,
   Flex,
-  Spacer,
 } from '@chakra-ui/react';
 import { FiEdit, FiTrash2, FiArrowRight } from 'react-icons/fi';
 
